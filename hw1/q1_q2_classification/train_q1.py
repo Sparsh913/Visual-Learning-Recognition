@@ -18,16 +18,16 @@ if __name__ == "__main__":
     # You should experiment and choose the correct hyperparameters
     # You should get a map of around 22 in 5 epochs
     ##################################################################
-    # args = ARGS(
-    #     epochs=10,
-    #     inp_size=64,
-    #     use_cuda=True,
-    #     val_every=70
-    #     lr=# TODO,
-    #     batch_size=#TODO,
-    #     step_size=#TODO,
-    #     gamma=#TODO
-    # )
+    args = ARGS(
+        epochs=300,
+        inp_size=64, # input size of the image -> 64x64
+        use_cuda=True,
+        val_every=60, # how often to test the model
+        lr= 0.001,
+        batch_size= 32,
+        step_size=50, # step_size (int) – Period of learning rate decay. -> explanation: number of epochs after which the learning rate is decayed by gamma.
+        gamma=0.5 #gamma (float) – Multiplicative factor of learning rate decay. Default: 0.1
+    )
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################

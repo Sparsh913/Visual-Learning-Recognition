@@ -33,12 +33,14 @@ def train(args, model, optimizer, scheduler=None, model_name='model'):
     model.train()
     model = model.to(args.device)
 
-    cnt = 0
+    cnt = 0 # counter for number of iterations
 
     for epoch in range(args.epochs):
         for batch_idx, (data, target, wgt) in enumerate(train_loader):
             data, target, wgt = data.to(args.device), target.to(args.device), wgt.to(args.device)
-
+            # print("data: ", data.shape) # (batch_size, 3, 64, 64)
+            # print("target: ", target.shape) # (batch_size, 20)
+            # print("wgt: ", wgt.shape) # (batch_size, 20)
             optimizer.zero_grad()
             output = model(data)
 
@@ -53,11 +55,28 @@ def train(args, model, optimizer, scheduler=None, model_name='model'):
             # Function Outputs:
             #   - `output`: Computed loss, a single floating point number
             ##################################################################
-            loss = 0
+            def sigmoid(x):
+                return 1 / (1 + torch.exp(-x))
+            
+            def binary_cross_entropy_loss(output, target, wgt):
+                eps = 1e-8
+                sig_output = sigmoid(output)
+                
+                # Compute bce loss element-wise
+                bce_loss = -1 * (target * torch.log(sig_output + eps) + (1 - target) * torch.log(1 - sig_output + eps))
+                
+                # Apply weights
+                weighted_loss = wgt * bce_loss
+                
+                # Compute mean loss
+                loss = torch.mean(weighted_loss)
+                
+                return loss
             ##################################################################
             #                          END OF YOUR CODE                      #
             ##################################################################
-            
+            # loss = cross_entropy_loss(output, target, wgt)
+            loss = binary_cross_entropy_loss(output, target, wgt)
             loss.backward()
             
             if cnt % args.log_every == 0:
@@ -91,5 +110,5 @@ def train(args, model, optimizer, scheduler=None, model_name='model'):
 
     # Validation iteration
     test_loader = utils.get_data_loader('voc', train=False, batch_size=args.test_batch_size, split='test', inp_size=args.inp_size)
-    ap, map = utils.eval_dataset_map(model, args.device, test_loader)
+    ap, map = utils.eval_dataset_map(model, args.device, test_loader) # ap is average precision, map is mean average precision
     return ap, map

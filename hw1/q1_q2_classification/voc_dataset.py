@@ -17,18 +17,18 @@ class VOCDataset(Dataset):
                    'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike',
                    'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
     INV_CLASS = {}
-    for i in range(len(CLASS_NAMES)):
+    for i in range(len(CLASS_NAMES)): # Number of classes are 20
         INV_CLASS[CLASS_NAMES[i]] = i
 
     def __init__(self, split, size, data_dir='data/VOCdevkit/VOC2007/'):
         super().__init__()
         self.split = split
         self.data_dir = data_dir
-        self.size = size
+        self.size = size # size is the size of the image
         self.img_dir = os.path.join(data_dir, 'JPEGImages')
         self.ann_dir = os.path.join(data_dir, 'Annotations')
 
-        split_file = os.path.join(data_dir, 'ImageSets/Main', split + '.txt')
+        split_file = os.path.join(data_dir, 'ImageSets/Main', split + '.txt') # split_file is a list of image names
         with open(split_file) as fp:
             self.index_list = [line.strip() for line in fp]
 
@@ -67,10 +67,21 @@ class VOCDataset(Dataset):
 
             #  The class vector should be a 20-dimensional vector with class[i] = 1 if an object of class i is present in the image and 0 otherwise
             class_vec = torch.zeros(20)
+            # the class of the object is stored in the `name` attribute of the `object` tag
+            for obj in tree.findall('object'):
+                class_name = obj.find('name').text
+                class_index = self.get_class_index(class_name)
+                class_vec[class_index] = 1
 
             # The weight vector should be a 20-dimensional vector with weight[i] = 0 iff an object of class i has the `difficult` attribute set to 1 in the XML file and 1 otherwise
             # The difficult attribute specifies whether a class is ambiguous and by setting its weight to zero it does not contribute to the loss during training 
             weight_vec = torch.ones(20)
+            # the difficult attribute is stored in the `difficult` attribute of the `object` tag
+            for obj in tree.findall('object'):
+                difficult = int(obj.find('difficult').text)
+                class_name = obj.find('name').text
+                class_index = self.get_class_index(class_name)
+                weight_vec[class_index] = 1 - difficult
 
             ######################################################################
             #                            END OF YOUR CODE                        #
@@ -92,7 +103,14 @@ class VOCDataset(Dataset):
         # change and you will have to write the correct value of `flat_dim`
         # in line 46 in simple_cnn.py
         ######################################################################
-        pass
+        # return [
+        #     transforms.RandomHorizontalFlip(),
+        #     transforms.RandomVerticalFlip(),
+        #     transforms.RandomRotation(45),
+        #     transforms.RandomResizedCrop(self.size, scale=(0.5, 1.0)),
+        # ]
+        # return no augmentation, i.e identity transform
+        return [transforms.Resize(self.size)]
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################

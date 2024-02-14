@@ -31,17 +31,22 @@ class SimpleCNN(nn.Module):
     def __init__(self, num_classes=10, inp_size=28, c_dim=1):
         super().__init__()
         self.num_classes = num_classes
+        # Original image size: inpt_size x inpt_size
         self.conv1 = nn.Conv2d(c_dim, 32, 5, padding=2)
+        # After conv1: inpt_size x inpt_size
         self.conv2 = nn.Conv2d(32, 64, 5, padding=2)
+        # After conv2: inpt_size x inpt_size
         self.nonlinear = nn.ReLU()
         self.pool1 = nn.AvgPool2d(2, 2)
+        # After pool1: inpt_size/2 x inpt_size/2
         self.pool2 = nn.AvgPool2d(2, 2)
+        # After pool2: inpt_size/4 x inpt_size/4
 
         # TODO set the correct dim here
-        self.flat_dim = None
+        self.flat_dim = 64 * (inp_size//4) * (inp_size//4) # 64 is the output channel of conv2
 
         # Sequential is another way of chaining the layers.
-        self.fc1 = nn.Sequential(*get_fc(self.flat_dim, 128, 'none'))
+        self.fc1 = nn.Sequential(*get_fc(self.flat_dim, 128, 'none')) # No activation??
         self.fc2 = nn.Sequential(*get_fc(128, num_classes, 'none'))
 
     def forward(self, x):

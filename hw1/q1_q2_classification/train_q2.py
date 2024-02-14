@@ -13,11 +13,14 @@ class ResNet(nn.Module):
     def __init__(self, num_classes) -> None:
         super().__init__()
 
-        self.resnet = torchvision.models.resnet18(weights='IMAGENET1K_V1')
+        self.resnet = torchvision.models.resnet18(weights='IMAGENET1K_V1', progress=True)
         ##################################################################
         # TODO: Define a FC layer here to process the features
+        self.fclayer = nn.Sequential(
+            nn.Linear(1000, num_classes),
+        )
         ##################################################################
-        pass
+        # pass
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -26,8 +29,11 @@ class ResNet(nn.Module):
     def forward(self, x):
         ##################################################################
         # TODO: Return raw outputs here
+        x = self.resnet(x)
+        x = self.fclayer(x)
+        return x
         ##################################################################
-        pass
+        # pass
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -45,16 +51,16 @@ if __name__ == "__main__":
     # You should experiment and choose the correct hyperparameters
     # You should get a map of around 50 in 50 epochs
     ##################################################################
-    # args = ARGS(
-    #     epochs=50,
-    #     inp_size=64,
-    #     use_cuda=True,
-    #     val_every=70
-    #     lr=# TODO,
-    #     batch_size=#TODO,
-    #     step_size=#TODO,
-    #     gamma=#TODO
-    # )
+    args = ARGS(
+        epochs=50,
+        inp_size=64,
+        use_cuda=True,
+        val_every=70,
+        lr=0.001,
+        batch_size=32,
+        step_size=30,
+        gamma=0.5
+    )
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
@@ -67,7 +73,7 @@ if __name__ == "__main__":
     # (except the last layer). You are free to use torchvision.models 
     ##################################################################
 
-    model = ResNet(len(VOCDataset.CLASS_NAMES)).to(args.device)
+    model = ResNet(len(VOCDataset.CLASS_NAMES)).to(args.device) # model initialized with ImageNet pre-trained weights
 
     ##################################################################
     #                          END OF YOUR CODE                      #
