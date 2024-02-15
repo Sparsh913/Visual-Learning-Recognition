@@ -103,14 +103,14 @@ class VOCDataset(Dataset):
         # change and you will have to write the correct value of `flat_dim`
         # in line 46 in simple_cnn.py
         ######################################################################
-        # return [
-        #     transforms.RandomHorizontalFlip(),
-        #     transforms.RandomVerticalFlip(),
-        #     transforms.RandomRotation(45),
-        #     transforms.RandomResizedCrop(self.size, scale=(0.5, 1.0)),
-        # ]
+        return [
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(45),
+            transforms.RandomResizedCrop(self.size, scale=(0.5, 1.0)),
+        ]
         # return no augmentation, i.e identity transform
-        return [transforms.Resize(self.size)]
+        # return [transforms.Resize(self.size)]
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
