@@ -58,8 +58,8 @@ class DetectorBackboneWithFPN(nn.Module):
         dummy_out_shapes = [(key, value.shape) for key, value in dummy_out.items()]
 
         # print("For dummy input images with shape: (2, 3, 224, 224)")
-        # for level_name, feature_shape in dummy_out_shapes:
-        #     print(f"Shape of {level_name} features: {feature_shape}")
+        for level_name, feature_shape in dummy_out_shapes:
+            print(f"Shape of {level_name} features: {feature_shape}")
 
         ######################################################################
         # TODO: Initialize additional Conv layers for FPN.                   #
@@ -77,7 +77,16 @@ class DetectorBackboneWithFPN(nn.Module):
         # This behaves like a Python dict, but makes PyTorch understand that
         # there are trainable weights inside it.
         # Add THREE lateral 1x1 conv and THREE output 3x3 conv layers.
-        self.fpn_params = nn.ModuleDict()
+        self.fpn_params = nn.ModuleDict() # This is a dictionary of layers
+        
+        self.fpn_params["lateral_c3"] = nn.Conv2d(dummy_out_shapes[0][1][1], self.out_channels, kernel_size=1, stride=1, padding=0)
+        self.fpn_params["lateral_c4"] = nn.Conv2d(dummy_out_shapes[1][1][1], self.out_channels, kernel_size=1, stride=1, padding=0)
+        self.fpn_params["lateral_c5"] = nn.Conv2d(dummy_out_shapes[2][1][1], self.out_channels, kernel_size=1, stride=1, padding=0)
+        
+        self.fpn_params["output_p3"] = nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=1)
+        self.fpn_params["output_p4"] = nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=1)
+        self.fpn_params["output_p5"] = nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=1)
+    
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
@@ -102,8 +111,18 @@ class DetectorBackboneWithFPN(nn.Module):
         # (c3, c4, c5) and FPN conv layers created above.                    #
         # HINT: Use `F.interpolate` to upsample FPN features.                #
         ######################################################################
-
-        pass
+        fpn_feats["p3"] = self.fpn_params["lateral_c3"](backbone_feats["c3"])
+        fpn_feats["p4"] = self.fpn_params["lateral_c4"](backbone_feats["c4"])
+        fpn_feats["p5"] = self.fpn_params["lateral_c5"](backbone_feats["c5"])
+        
+        # Upsampling is required because the stride of the conv layers is 1 and the input features are downsampled.
+        fpn_feats["p4"] += F.interpolate(fpn_feats["p5"], scale_factor=2, mode="nearest")
+        fpn_feats["p3"] += F.interpolate(fpn_feats["p4"], scale_factor=2, mode="nearest")
+        
+        fpn_feats["p3"] = self.fpn_params["output_p3"](fpn_feats["p3"])
+        fpn_feats["p4"] = self.fpn_params["output_p4"](fpn_feats["p4"])
+        fpn_feats["p5"] = self.fpn_params["output_p5"](fpn_feats["p5"])
+        
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
@@ -152,8 +171,9 @@ class FCOSPredictionNetwork(nn.Module):
         # Fill these.
         stem_cls = []
         stem_box = []
-        # Replace "pass" statement with your code
-        pass
+        
+        stem_cls.append(nn.Conv2d(in_channels, stem_channels[0], kernel_size=3, stride=1, padding=1), nn.ReLU(), nn.Conv2d(stem_channels[0], stem_channels[1], kernel_size=3, stride=1, padding=1), nn.ReLU(), nn.Conv2d(stem_channels[1], stem_channels[2], kernel_size=3, stride=1, padding=1), nn.ReLU())
+        stem_box.append(nn.Conv2d(in_channels, stem_channels[0], kernel_size=3, stride=1, padding=1), nn.ReLU(), nn.Conv2d(stem_channels[0], stem_channels[1], kernel_size=3, stride=1, padding=1), nn.ReLU(), nn.Conv2d(stem_channels[1], stem_channels[2], kernel_size=3, stride=1, padding=1), nn.ReLU())
 
         # Wrap the layers defined by student into a `nn.Sequential` module:
         self.stem_cls = nn.Sequential(*stem_cls)
@@ -175,9 +195,12 @@ class FCOSPredictionNetwork(nn.Module):
         ######################################################################
 
         # Replace these lines with your code, keep variable names unchanged.
-        self.pred_cls = None  # Class prediction conv
-        self.pred_box = None  # Box regression conv
-        self.pred_ctr = None  # Centerness conv
+        # Class prediction conv
+        self.pred_cls = nn.Conv2d(stem_channels[2], num_classes, kernel_size=3, stride=1, padding=1)
+        # Box regression conv
+        self.pred_box = nn.Conv2d(stem_channels[2], 4, kernel_size=3, stride=1, padding=1)
+        # Centerness prediction conv
+        self.pred_ctr = nn.Conv2d(stem_channels[2], 1, kernel_size=3, stride=1, padding=1)
 
         ######################################################################
         #                           END OF YOUR CODE                         #
@@ -224,6 +247,19 @@ class FCOSPredictionNetwork(nn.Module):
         class_logits = {}
         boxreg_deltas = {}
         centerness_logits = {}
+        
+        class_logits["p3"] = self.pred_cls(self.stem_cls(feats_per_fpn_level["p3"]))
+        class_logits["p4"] = self.pred_cls(self.stem_cls(feats_per_fpn_level["p4"]))
+        class_logits["p5"] = self.pred_cls(self.stem_cls(feats_per_fpn_level["p5"]))
+        
+        boxreg_deltas["p3"] = self.pred_box(self.stem_box(feats_per_fpn_level["p3"]))
+        boxreg_deltas["p4"] = self.pred_box(self.stem_box(feats_per_fpn_level["p4"]))
+        boxreg_deltas["p5"] = self.pred_box(self.stem_box(feats_per_fpn_level["p5"]))
+        
+        centerness_logits["p3"] = self.pred_ctr(self.stem_box(feats_per_fpn_level["p3"]))
+        centerness_logits["p4"] = self.pred_ctr(self.stem_box(feats_per_fpn_level["p4"]))
+        centerness_logits["p5"] = self.pred_ctr(self.stem_box(feats_per_fpn_level["p5"]))
+        
         ######################################################################
         #                           END OF YOUR CODE                         #
         ######################################################################
@@ -249,10 +285,12 @@ class FCOS(nn.Module):
         # TODO: Initialize backbone and prediction network using arguments.  #
         ######################################################################
         # Feel free to delete these two lines: (but keep variable names same)
-        self.backbone = None
-        self.pred_net = None
+        # self.backbone = None
+        # self.pred_net = None
         # Replace "pass" statement with your code
-        pass
+        self.backbone = DetectorBackboneWithFPN(fpn_channels)
+        self.pred_net = FCOSPredictionNetwork(num_classes, fpn_channels, stem_channels)
+        
         ######################################################################
         #                           END OF YOUR CODE                         #
         ######################################################################
