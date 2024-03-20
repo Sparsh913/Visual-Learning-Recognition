@@ -19,7 +19,14 @@ def compute_discriminator_loss(
     ##################################################################
     loss = None
     # implement the loss from https://arxiv.org/pdf/1406.2661.pdf
-    loss = -torch.mean(torch.log(abs(discrim_real)) + torch.log(abs(1 - discrim_fake)))
+    # Remove 0, nan, inf discrim_real and discrim_fake
+    
+    
+    # loss = -torch.mean(torch.log(abs(discrim_real)) + torch.log(abs(1 - discrim_fake)))
+    # BCE loss is used to avoid nan and inf
+    loss = F.binary_cross_entropy_with_logits(discrim_real, torch.ones_like(discrim_real)) 
+    + F.binary_cross_entropy_with_logits(discrim_fake, torch.zeros_like(discrim_fake))
+    loss /= 2
     # print("dicrim_real", discrim_real)
     # print("discrim_fake", discrim_fake)
     # print("loss discriminator", loss)
@@ -35,7 +42,8 @@ def compute_generator_loss(discrim_fake):
     ##################################################################
     # loss = None
     # implement the loss from https://arxiv.org/pdf/1406.2661.pdf
-    loss = -torch.mean(torch.log(abs(discrim_fake)))
+    # loss = -torch.mean(torch.log(abs(discrim_fake)))
+    loss = F.binary_cross_entropy_with_logits(discrim_fake, torch.ones_like(discrim_fake))
     print("loss generator", loss)
     ##################################################################
     #                          END OF YOUR CODE                      #
@@ -44,6 +52,8 @@ def compute_generator_loss(discrim_fake):
 
 
 if __name__ == "__main__":
+    # empty torch cache
+    torch.cuda.empty_cache()
     args = get_args()
     gen = Generator().cuda()
     disc = Discriminator().cuda()

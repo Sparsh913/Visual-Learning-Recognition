@@ -81,7 +81,11 @@ class SinusoidalPosEmb(nn.Module):
         self.dim = dim
 
     def forward(self, x):
+        # convert x to tensor if it's not
+        # if not isinstance(x, torch.Tensor):
+        #     x = torch.tensor(x)
         device = x.device
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         half_dim = self.dim // 2
         emb = math.log(10000) / (half_dim - 1)
         emb = torch.exp(torch.arange(half_dim, device=device) * -emb)
@@ -283,7 +287,7 @@ class Unet(nn.Module):
     def forward(self, x, time):
         x = self.init_conv(x)
         r = x.clone()
-
+        # print("time passing through mlp", time)
         t = self.time_mlp(time)
 
         h = []

@@ -23,7 +23,7 @@ def compute_discriminator_loss(
     # loss = None
     # implement the loss from https://arxiv.org/pdf/1704.00028.pdf from Algorithm 1
     loss1 = torch.mean(discrim_fake) - torch.mean(discrim_real)
-    loss2 = lamb * torch.mean((torch.norm(torch.autograd.grad(discrim_interp, interp, grad_outputs=torch.ones_like(discrim_interp), create_graph=True)[0], 2) - 1) ** 2)
+    loss2 = lamb * torch.mean((torch.norm(torch.autograd.grad(discrim_interp, interp, grad_outputs=torch.ones_like(discrim_interp), create_graph=True)[0], 2, dim=1) - 1) ** 2).mean()
     loss = loss1 + loss2
     ##################################################################
     #                          END OF YOUR CODE                      #

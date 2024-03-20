@@ -121,8 +121,8 @@ def train_model(
                 # generate fake batch
                 fake_batch = gen(n_samples = discrim_real.shape[0]).cuda()
                 discrim_fake = disc(fake_batch)
-                print("discrim_fake", discrim_fake)
-                print("discrim_real", discrim_real)
+                # print("discrim_fake", discrim_fake)
+                # print("discrim_real", discrim_real)
                 
                 ##################################################################
                 #                          END OF YOUR CODE                      #
@@ -136,6 +136,7 @@ def train_model(
                 discrim_interp = None
                 
                 interp = real_batch + (fake_batch - real_batch) * torch.rand(real_batch.shape[0], 1, 1, 1).cuda()
+                # interp.requires_grad = True
                 discrim_interp = disc(interp)
                 ##################################################################
                 #                          END OF YOUR CODE                      #
