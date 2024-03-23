@@ -159,8 +159,8 @@ def train_model(
                     ###################################################################
                     fake_batch = None
                     discrim_fake = None
-                    
-                    fake_batch = gen().cuda() # shape (batch_size, 3, 32, 32)
+                    b = train_batch.shape[0]
+                    fake_batch = gen(b).cuda() # shape (batch_size, 3, 32, 32)
                     discrim_fake = disc(fake_batch) # shape (batch_size, 1)
                     # print("discrim_fake", discrim_fake)
                     ##################################################################
@@ -183,8 +183,9 @@ def train_model(
                         # Make sure they lie in the range [0, 1]!
                         ##################################################################
                         generated_samples = None
-                        generated_samples = gen().cuda()
+                        generated_samples = gen(n_samples = 100).cuda()
                         generated_samples = (generated_samples + 1) / 2
+                        generated_samples = generated_samples.clamp(0, 1)
                         ##################################################################
                         #                          END OF YOUR CODE                      #
                         ##################################################################

@@ -42,14 +42,13 @@ def interpolate_latent_space(gen, path):
     # Use torchvision.utils.save_image to save out the visualization.
     ##################################################################
     # pass
-    latent_vectors = torch.zeros(100, 128)
-    for i in range(10):
-        latent_vectors[i*10:(i+1)*10, 0] = torch.linspace(-1, 1, 10)
-        latent_vectors[i*10:(i+1)*10, 1] = torch.linspace(-1, 1, 10)
-    generated_samples = gen()
-    generated_samples = (generated_samples + 1) / 2 # scale to [0, 1]
-    # saving
-    save_image(generated_samples, path, nrow=10)
+    z = torch.zeros(100, 128)
+    x, y = torch.meshgrid(torch.linspace(-1, 1, 10), torch.linspace(-1, 1, 10))
+    z[:, 0] = x.flatten()
+    z[:, 1] = y.flatten()
+    z = z.cuda()
+    samples = gen.forward_given_samples(z)
+    save_image(samples, path, nrow=10)
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
