@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn as nn
 from vit import ViT
 
 class Trainer:
@@ -48,8 +49,10 @@ class Trainer:
         """
 
         
-        # TODO - Compute cross entropy loss between predictions and labels. 
-        loss = None
+        # TODO - Compute cross entropy loss between predictions and labels.
+        # Note that predictions are the logits, not the probabilities.
+        predictions = nn.functional.log_softmax(predictions, dim=1) 
+        loss = nn.CrossEntropyLoss()(predictions, labels)
         
 
         return loss
