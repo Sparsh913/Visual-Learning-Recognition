@@ -24,9 +24,13 @@ class Trainer(object):
     def loss(self, predictions, labels):
         #TODO - Compute cross entropy loss between predictions and labels. 
         #Make sure to compute this loss only for indices where label is not the null token.
-        #The loss should be averaged over batch and sequence dimensions. 
-        loss = nn.CrossEntropyLoss(ignore_index=0, reduction='sum')(predictions.permute(0, 2, 1), labels)
-        loss = loss / labels[labels is not None].shape[0]
+        #The loss should be averaged over batch and sequence dimensions.
+        # predictions = predictions[predictions is not None].squeeze(0)
+        # labels = labels[labels is not None].squeeze(0)
+        # loss = nn.CrossEntropyLoss(ignore_index=self.model._null)(predictions, labels)
+        mask = (labels != self.model._null)
+        loss = nn.CrossEntropyLoss(ignore_index=self.model._null)(predictions[mask], labels[mask])
+        # loss = loss / labels[labels is not None].shape[0]
         # Average loss over batch and sequence dimensions
         # loss = loss.mean()
         return loss
@@ -60,7 +64,8 @@ class Trainer(object):
             for batch in self.train_dataloader:
                 features, captions = batch[0].to(self.device), batch[1].to(self.device)
                 logits = self.model(features, captions[:, :-1])
-
+                # print("logits", logits.shape)
+                # print("captions[:, :-1]", captions[:, :-1].shape)
                 loss = self.loss(logits, captions[:, 1:])
                 self.optim.zero_grad()
                 loss.backward()

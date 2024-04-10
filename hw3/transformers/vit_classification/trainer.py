@@ -51,10 +51,9 @@ class Trainer:
         
         # TODO - Compute cross entropy loss between predictions and labels.
         # Note that predictions are the logits, not the probabilities.
-        predictions = nn.functional.log_softmax(predictions, dim=1) 
+        predictions = nn.functional.log_softmax(predictions, dim=1)
         loss = nn.CrossEntropyLoss()(predictions, labels)
         
-
         return loss
 
     def train(self):

@@ -22,16 +22,17 @@ transformer = TransformerDecoder(
           idx_to_word = train_dataset.data['idx_to_word'],
           input_dim=train_dataset.data['train_features'].shape[1],
           embed_dim=256,
-          num_heads=4,
-          num_layers=4,
+          num_heads=2,
+          num_layers=2,
           max_length=30,
           device = device
         )
 
 trainer = Trainer(transformer, train_dataloader, val_dataloader,
           num_epochs=100,
-          learning_rate=1e-4,
-          device = device
+          learning_rate=1.0e-4,
+          device = device,
+          print_every=1,
         )
 
 trainer.train()

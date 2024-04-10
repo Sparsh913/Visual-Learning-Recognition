@@ -20,8 +20,8 @@ class EncoderLayer(nn.Module):
         self.feed_forward = FeedForwardBlock(d_model, num_heads, d_ff, dropout=dropout)
 
     def forward(self, seq, mask):
-        print("seq", seq.shape) # (N, num_patches + 1, d_model)
-        print("mask", mask.shape) # (num_patches, num_patches, num_patches)
+        # print("seq", seq.shape) # (N, num_patches + 1, d_model)
+        # print("mask", mask.shape) # (num_patches, num_patches, num_patches)
         
         x = self.self_attention(seq, mask) # it already contains residual connection and layer normalization
         x = self.feed_forward(x)
@@ -67,6 +67,7 @@ class ViT(nn.Module):
         self.positional_encoding = PositionalEncoding(d_model)
         self.fc = nn.Linear(d_model, num_classes)
         self.cls_token = nn.Parameter(torch.randn(1, 1, d_model)) # shape (1, 1, d_model). CLS token is a learnable parameter - class token
+        # print("cls_token", self.cls_token.shape)
 
         self.layers = nn.ModuleList([EncoderLayer(d_model, num_heads, d_ff) for _ in range(num_layers)])
 
@@ -88,6 +89,7 @@ class ViT(nn.Module):
         images = images.permute(0, 2, 3, 1)
         patches = images.unfold(1, self.patch_dim, self.patch_dim).unfold(2, self.patch_dim, self.patch_dim) # (N, H, W, patch_dim, patch_dim, 3)
         patches = patches.contiguous().view(images.size(0), -1, self.patch_dim * self.patch_dim * 3)
+        # print("patches", patches.shape)
         
         return patches
 
@@ -102,19 +104,22 @@ class ViT(nn.Module):
         
         patches = self.patchify(images)
         patches_embedded = self.patch_embedding(patches)
+        # print("patches_embedded", patches_embedded.shape) # (N, num_patches, d_model)
         
         output = None # TODO (append a CLS token to the beginning of the sequence of patch embeddings)
         batch_size = patches_embedded.size(0)
         output = torch.cat([self.cls_token.expand(batch_size, -1, -1), patches_embedded], dim=1) # shape (N, num_patches + 1, d_model)
-
+        # print("output", output.shape)
         output = self.positional_encoding(output)
-        mask = torch.ones((self.num_patches, self.num_patches+1, self.num_patches+1), device=self.device)
+        mask = torch.ones((self.num_patches+1, self.num_patches+1), device=self.device)
 
         for layer in self.layers:
             output = layer(output, mask)
 
         # output = None # TODO (take the embedding corresponding to the [CLS] token and feed it through a linear layer to obtain the logits for each class)
-        output = self.fc(output[:, 0, :])
+        output = output[:, 0, :].squeeze(1) # shape (N, d_model)
+        output = self.fc(output) # shape (N, num_classes)
+        # print("output", output.shape)
 
         return output
 

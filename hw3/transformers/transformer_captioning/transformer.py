@@ -16,6 +16,7 @@ class AttentionLayer(nn.Module):
         # This class assumes that the input dimension for query, key and value is embed_dim
         # self.query_proj = 
         # projection for query
+        # print("embed_dim", embed_dim)
         self.query_proj = nn.Linear(embed_dim, embed_dim)
         
         
@@ -36,7 +37,7 @@ class AttentionLayer(nn.Module):
         # query = 
         # projecting query
         query = self.query_proj(query)
-        print("query shape", query.shape)
+        # print("query shape", query.shape)
         d_k = query.shape[-1]
         
         key = self.key_proj(key)
@@ -50,13 +51,8 @@ class AttentionLayer(nn.Module):
             # convert att_mask which is multiplicative, to an additive mask
             # Hint : If mask[i,j] = 0, we want softmax(QKT[i,j] + additive_mask[i,j]) to be 0
             # Think about what inputs make softmax 0.
-            # inputs that make softmax 0 are those where the dot product is very negative
-            # shape of attention mask is (N, S, T) ->
-            
-            additive_mask = attn_mask.unsqueeze(0).expand(N, -1, -1) * -1e9 # multiply by a large negative number to make softmax 0
-            print("additive mask shape", additive_mask.shape)
-            # dot_product += additive_mask
-            dot_product = dot_product.masked_fill(additive_mask == 0, float('-inf'))
+            additive_mask = (1 - attn_mask) * -1e9 # multiply by a large negative number to make softmax 0
+            dot_product += additive_mask
         
         # apply softmax, dropout, and use value
         y = self.dropout(F.softmax(dot_product, dim=-1)) * value
@@ -68,7 +64,8 @@ class MultiHeadAttentionLayer(AttentionLayer):
        
         super().__init__(embed_dim, dropout)
         self.num_heads = num_heads
-        print("num_heads", num_heads)
+        # print("num_heads", num_heads)
+        # print("embed_dim", embed_dim)
 
         # TODO: Initialize the following layers and parameters to perform attention
         self.head_proj = nn.Linear(embed_dim, embed_dim)
@@ -78,7 +75,8 @@ class MultiHeadAttentionLayer(AttentionLayer):
         N, S, D = query.shape
         N, T, D = value.shape
         assert key.shape == value.shape
-        print("query shape Multihead", query.shape)
+        # print("query shape Multihead", query.shape)
+        # print("key shape Multihead", key.shape)
         # print("value shape Multihead", value.shape)
 
         # TODO : Compute multi-head attention
@@ -87,29 +85,34 @@ class MultiHeadAttentionLayer(AttentionLayer):
         #project query, key and value
         #after projection, split the embedding across num_heads
         #eg - expected shape for value is (N, H, T, D/H)
-        query = self.query_proj(query).view(N, H, S, D // H)
-        key = self.key_proj(key).view(N, H, T, D // H)
-        value = self.value_proj(value).view(N, H, T, D // H)
-        print("value shape", value.shape) # shape (N, H, T, D/H)
+        query = self.query_proj(query).view(N, S, H, D // H).transpose(1, 2) # shape (N, S, H, D/H)
+        key = self.key_proj(key).view(N, T, H, D // H).transpose(1, 2)
+        value = self.value_proj(value).view(N, T, H, D // H).transpose(1, 2)
+        # print("value shape after heads", value.shape) # shape (N, H, T, D/H)
 
         #compute dot-product attention separately for each head. Don't forget the scaling value!
         #Expected shape of dot_product is (N, H, S, T)
         dot_product = (torch.matmul(query, key.transpose(2, 3)) / math.sqrt(D // H)).to('cuda') # shape (N, H, S, T)
-        print("dot_product shape", dot_product.shape)
+        # print("dot_product shape", dot_product.shape)
 
         if attn_mask is not None:
             # convert att_mask which is multiplicative, to an additive mask
             # Hint : If mask[i,j] = 0, we want softmax(QKT[i,j] + additive_mask[i,j]) to be 0
             # Think about what inputs make softmax 0.
-            print("attn_mask shape", attn_mask.shape)
-            additive_mask = attn_mask.unsqueeze(1).expand(-1, H, -1, -1).repeat(np.ceil(value.shape[0]/attn_mask.shape[0]).astype(int), 1, 1, 1)[:value.shape[0]] * -1e9 # multiply by a large negative number to make softmax 0
-            additive_mask = additive_mask.to('cuda')
-            print("additive mask shape", additive_mask.shape)
+            # print("attn_mask shape", attn_mask.shape)
+            # additive_mask = attn_mask.unsqueeze(1).expand(-1, H, -1, -1).repeat(np.ceil(value.shape[0]/attn_mask.shape[0]).astype(int), 1, 1, 1)[:value.shape[0]] * -1e9 # multiply by a large negative number to make softmax 0
+            # additive_mask = additive_mask.to('cuda')
+            # print("additive mask shape", additive_mask.shape)
+            # additive_mask = (1 - attn_mask).unsqueeze(1).expand(-1, H, -1, -1)
+            # additive_mask = additive_mask.repeat(np.ceil(value.shape[0]/attn_mask.shape[0]).astype(int), 1, 1, 1)[:value.shape[0]]
+            # additive_mask = additive_mask.to('cuda')
             # dot_product += additive_mask
-            dot_product = dot_product.masked_fill(additive_mask == 0, float('-inf'))
+            # dot_product = dot_product.masked_fill(attn_mask == 0, float('-inf'))
+            additive_mask = (1 - attn_mask) * -1e9 # multiply by a large negative number to make softmax 0
+            dot_product += additive_mask.to(query.device)
         
         # apply softmax, dropout, and use value
-        print("test", self.dropout(F.softmax(dot_product, dim=-1)).shape) # shape (N, H, S, T)
+        # print("test", self.dropout(F.softmax(dot_product, dim=-1)).shape) # shape (N, H, S, T)
         y = self.dropout(F.softmax(dot_product, dim=-1))
         y = torch.matmul(y, value)
 
@@ -139,7 +142,7 @@ class PositionalEncoding(nn.Module):
         # TODO - add the encoding to x
 
         output = x + self.encoding[:S, :].unsqueeze(0)
-        print("output shape", output.shape)
+        # print("output shape", output.shape)
         output = self.dropout(output)
    
         return output
@@ -270,8 +273,8 @@ class TransformerDecoder(nn.Module):
         # to predict the ith element of the sequence.
         mask = torch.ones(_len, _len)
         mask = torch.tril(mask)
-        mask = mask.unsqueeze(0).expand(_len, -1, -1) # shape (1, _len, _len)
-        print("Causal mask shape", mask.shape)
+        # mask = mask.unsqueeze(0).expand(_len, -1, -1) # shape (1, _len, _len)
+        # print("Causal mask shape", mask.shape)
         
         return mask
                                       
