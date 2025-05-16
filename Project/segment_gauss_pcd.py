@@ -3,7 +3,7 @@ import cv2
 import open3d as o3d
 from copy import deepcopy
 
-ply_path = "pcd2.ply"
+ply_path = "pcd1.ply"
 
 pcd = o3d.io.read_point_cloud(ply_path)
 points11 = np.asarray(pcd.points)
